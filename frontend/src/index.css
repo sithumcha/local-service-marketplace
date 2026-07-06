@@ -1,7 +1,41 @@
 @import "tailwindcss";
 
+:root {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  --font-heading: 'Plus Jakarta Sans', sans-serif;
+}
+
 body {
-  @apply bg-slate-950 text-slate-100 antialiased;
+  @apply bg-slate-950 text-slate-100 antialiased selection:bg-amber-500/35 selection:text-white;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+/* Premium custom UI styles */
+.glass-panel {
+  @apply bg-slate-900/65 backdrop-blur-md border border-slate-800/80 shadow-2xl;
+}
+
+.glass-panel-light {
+  @apply bg-white/75 backdrop-blur-md border border-slate-200/80 shadow-xl;
+}
+
+/* Custom fade-in animations on load */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Light Theme overrides using Tailwind v4 custom theme variables */
@@ -43,7 +77,7 @@ html.light .text-slate-950 {
 
 /* Smooth transition for theme switching */
 * {
-  transition-property: background-color, border-color, color, fill, stroke;
+  transition-property: background-color, border-color, color, fill, stroke, transform;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 200ms;
 }

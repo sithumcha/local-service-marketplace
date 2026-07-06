@@ -152,7 +152,7 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between h-screen">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between h-screen animate-fade-in">
       {/* Header */}
       <header className="border-b border-slate-900 bg-slate-950/70 h-16 flex items-center justify-between px-6 flex-shrink-0">
         <Link to="/" className="text-2xl font-black bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">

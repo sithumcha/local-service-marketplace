@@ -220,35 +220,45 @@ const Home = () => {
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Top Providers Grid */}
+                       {/* Top Providers Grid */}
             <div className="pt-20 max-w-4xl mx-auto space-y-8">
               <div className="text-center">
                 <h2 className="text-2xl font-black text-white">Top Rated Service Providers</h2>
-                <p className="text-slate-450 text-xs mt-1">Verified professionals with completed escrow checkouts</p>
+                <p className="text-slate-455 text-xs mt-1">Verified professionals with completed escrow checkouts</p>
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
                 {activeProviders.map((provider) => (
                   <div
                     key={provider._id}
-                    className="bg-slate-900 border border-slate-850 p-5 rounded-2xl relative hover:border-slate-700 transition flex flex-col justify-between"
+                    className={`bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border transition flex flex-col justify-between hover:scale-[1.02] shadow-xl ${
+                      provider.isFeatured
+                        ? 'border-yellow-500/40 shadow-lg shadow-yellow-500/5'
+                        : 'border-slate-850 hover:border-slate-700/80'
+                    }`}
                   >
                     <div className="space-y-3.5">
                       <div className="flex justify-between items-center">
-                        <span className="bg-emerald-500/10 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/20">
-                          ✓ Verified
-                        </span>
-                        <span className="text-xs font-bold text-amber-500">★ {provider.ratingAvg.toFixed(1)}</span>
+                        <div className="flex gap-1.5 items-center flex-wrap">
+                          {provider.userId?.isVerified && (
+                            <span className="bg-sky-500/10 text-sky-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-sky-500/20">
+                              ✔️ Verified
+                            </span>
+                          )}
+                          {provider.isFeatured && (
+                            <span className="bg-yellow-500/10 text-yellow-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-yellow-500/20 animate-pulse">
+                              ⭐ Featured
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs font-bold text-amber-500">★ {provider.ratingAvg?.toFixed(1) || '0.0'}</span>
                       </div>
 
                       <div>
                         <h4 className="font-bold text-white text-base">{provider.userId?.name}</h4>
-                        <p className="text-xs text-slate-450 mt-0.5">{provider.serviceCategories?.[0]?.name || 'General Help'}</p>
+                        <p className="text-xs text-slate-455 mt-0.5">{provider.serviceCategories?.[0]?.name || 'General Help'}</p>
                       </div>
 
-                      <div className="text-slate-500 text-xs space-y-1">
+                      <div className="text-slate-500 text-xs space-y-1 font-semibold">
                         <p>📍 District: {provider.district || 'Colombo'} • {provider.city || 'Colombo 03'}</p>
                         <p>💼 Experience: {provider.experienceYears} Years</p>
                       </div>
@@ -256,11 +266,11 @@ const Home = () => {
 
                     <div className="border-t border-slate-950 mt-4 pt-4 flex justify-between items-center">
                       <div>
-                        <span className="text-[10px] text-slate-500 block">Rate</span>
+                        <span className="text-[10px] text-slate-500 block uppercase">Rate</span>
                         <span className="font-black text-white text-sm">LKR {provider.hourlyRate}/hr</span>
                       </div>
                       <Link
-                        to={`/providers/${provider._id}`}
+                        to={`/providers/${provider.userId?._id || provider._id}`}
                         className="px-3.5 py-2 bg-slate-950 hover:bg-slate-850 border border-slate-850 rounded-xl text-xs font-bold text-slate-200 transition"
                       >
                         View Profile
@@ -269,6 +279,7 @@ const Home = () => {
                   </div>
                 ))}
               </div>
+            </div></div>
             </div>
 
             {/* How It Works column sequence */}

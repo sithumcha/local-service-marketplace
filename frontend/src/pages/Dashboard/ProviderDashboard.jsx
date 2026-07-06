@@ -204,7 +204,7 @@ const ProviderDashboard = () => {
   const netPayout = grossEarnings * 0.9;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 relative">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 relative animate-fade-in">
       <div className="absolute top-0 right-0 w-80 h-80 bg-orange-500/5 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="max-w-6xl mx-auto z-10 relative">
