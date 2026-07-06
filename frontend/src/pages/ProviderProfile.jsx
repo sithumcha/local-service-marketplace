@@ -84,9 +84,14 @@ const ProviderProfile = () => {
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-3xl font-black text-white leading-tight">{userId?.name}</h1>
-                {isApproved && (
-                  <span className="bg-emerald-500/10 text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full border border-emerald-500/20">
-                    ✓ Verified Pro
+                {userId?.isVerified && (
+                  <span className="bg-sky-500/10 text-sky-400 text-xs font-bold px-2.5 py-0.5 rounded-full border border-sky-500/20">
+                    ✔️ Verified ID
+                  </span>
+                )}
+                {currentProvider?.isFeatured && (
+                  <span className="bg-yellow-500/10 text-yellow-400 text-xs font-bold px-2.5 py-0.5 rounded-full border border-yellow-500/20 animate-pulse">
+                    ⭐ Featured Pro
                   </span>
                 )}
               </div>

@@ -206,6 +206,15 @@ const CustomerDashboard = () => {
                             </button>
                           )}
 
+                          {booking.status === 'completed' && (
+                            <button
+                              onClick={() => setReviewBookingId(booking._id)}
+                              className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-xl text-xs font-bold text-amber-400 transition cursor-pointer"
+                            >
+                              Review ★
+                            </button>
+                          )}
+
                           {(booking.status === 'pending' || (booking.status === 'accepted' && !booking.isPaid)) && (
                             <button
                               onClick={() => handleCancel(booking._id)}
