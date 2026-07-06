@@ -74,6 +74,19 @@ const providerProfileSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
+    featuredUntil: {
+      type: Date,
+    },
+    busySlots: [
+      {
+        start: { type: Date, required: true },
+        end: { type: Date, required: true },
+      },
+    ],
   },
   {
     timestamps: true,

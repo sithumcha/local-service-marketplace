@@ -174,3 +174,50 @@ export const revokeProviderApproval = async (req, res) => {
   }
 };
 
+// @desc    Get all users pending KYC verification
+// @route   GET /api/admin/kyc-queue
+// @access  Private/Admin
+export const getKycQueue = async (req, res) => {
+  try {
+    const queue = await User.find({
+      verificationDoc: { $ne: '' },
+      isVerified: false,
+    });
+    res.status(200).json({ success: true, queue });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Approve or reject KYC for a user
+// @route   POST /api/admin/users/:userId/verify
+// @access  Private/Admin
+export const verifyProvider = async (req, res) => {
+  try {
+    const { action } = req.body; // 'approve' or 'reject'
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (action === 'approve') {
+      user.isVerified = true;
+    } else if (action === 'reject') {
+      user.isVerified = false;
+      user.verificationDoc = ''; // Clear document to allow re-upload
+    } else {
+      return res.status(400).json({ success: false, message: 'Invalid action. Specify approve or reject.' });
+    }
+
+    await user.save();
+    res.status(200).json({
+      success: true,
+      message: `KYC verification status: ${action}`,
+      user,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+

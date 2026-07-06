@@ -2,6 +2,7 @@ import Booking from '../models/Booking.model.js';
 import { updateBookingStatus as updateStatusService } from '../services/booking.service.js';
 import { createEscrowPayment, releaseEscrowPayment, refundEscrowPayment } from '../services/payment.service.js';
 import Chat from '../models/Chat.model.js';
+import ProviderProfile from '../models/ProviderProfile.model.js';
 
 // @desc    Create a booking request
 // @route   POST /api/bookings
@@ -12,6 +13,44 @@ export const createBooking = async (req, res) => {
 
     if (req.user.role !== 'customer') {
       return res.status(403).json({ success: false, message: 'Only customers can request bookings' });
+    }
+
+    // Schedule validation checks
+    const reqStart = new Date(scheduledDate);
+    const reqEnd = new Date(reqStart.getTime() + 2 * 60 * 60 * 1000); // Assume standard 2 hour duration
+
+    // 1. Check if provider has marked this slot as busy
+    const providerProfile = await ProviderProfile.findOne({ userId: providerId });
+    if (providerProfile && providerProfile.busySlots && providerProfile.busySlots.length > 0) {
+      const isBusy = providerProfile.busySlots.some((slot) => {
+        const slotStart = new Date(slot.start);
+        const slotEnd = new Date(slot.end);
+        return reqStart < slotEnd && reqEnd > slotStart;
+      });
+
+      if (isBusy) {
+        return res.status(400).json({
+          success: false,
+          message: 'The provider has marked this time slot as busy/unavailable. Please choose another time.',
+        });
+      }
+    }
+
+    // 2. Check for overlapping active bookings (pending, accepted, in-progress)
+    const overlapping = await Booking.findOne({
+      providerId,
+      status: { $in: ['pending', 'accepted', 'in-progress'] },
+      scheduledDate: {
+        $gte: new Date(reqStart.getTime() - 2 * 60 * 60 * 1000), // 2 hours before
+        $lte: new Date(reqStart.getTime() + 2 * 60 * 60 * 1000), // 2 hours after
+      },
+    });
+
+    if (overlapping) {
+      return res.status(400).json({
+        success: false,
+        message: 'The provider has an overlapping booking request or active job scheduled within this 2-hour window.',
+      });
     }
 
     // 1. Create the booking entry in MongoDB

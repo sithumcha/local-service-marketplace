@@ -114,16 +114,31 @@ const ProvidersDirectory = () => {
           </div>
         ) : filteredProviders.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProviders.map((provider) => (
+            {[...filteredProviders]
+              .sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0))
+              .map((provider) => (
               <div
                 key={provider._id}
-                className="bg-slate-900 border border-slate-850 p-5 rounded-2xl hover:border-slate-700 transition flex flex-col justify-between shadow-md"
+                className={`bg-slate-900 p-5 rounded-2xl transition flex flex-col justify-between shadow-md border ${
+                  provider.isFeatured
+                    ? 'border-yellow-500/40 shadow-lg shadow-yellow-500/5'
+                    : 'border-slate-850 hover:border-slate-700'
+                }`}
               >
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="bg-emerald-500/10 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/20">
-                      ✓ Verified
-                    </span>
+                  <div className="flex justify-between items-center flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5">
+                      {provider.userId?.isVerified && (
+                        <span className="bg-sky-500/10 text-sky-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-sky-500/20">
+                          ✔️ Verified ID
+                        </span>
+                      )}
+                      {provider.isFeatured && (
+                        <span className="bg-yellow-500/10 text-yellow-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-yellow-500/20 animate-pulse">
+                          ⭐ Featured
+                        </span>
+                      )}
+                    </div>
                     <span className="text-xs font-bold text-amber-500">★ {provider.ratingAvg?.toFixed(1) || '0.0'}</span>
                   </div>
 

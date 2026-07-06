@@ -5,6 +5,9 @@ import {
   getProviderById,
   getProviders,
   sandboxApproveMyProfile,
+  submitKyc,
+  buyFeaturedSubscription,
+  updateBusySlots,
 } from '../controllers/provider.controller.js';
 import { protect, authorize } from '../middlewares/auth.middleware.js';
 
@@ -16,6 +19,9 @@ router.get('/', getProviders);
 // Provider profile creation/updating
 router.post('/profile', protect, authorize('provider'), upsertProviderProfile);
 router.post('/profile/sandbox-approve', protect, authorize('provider'), sandboxApproveMyProfile);
+router.post('/profile/kyc', protect, authorize('provider'), submitKyc);
+router.post('/profile/feature', protect, authorize('provider'), buyFeaturedSubscription);
+router.post('/profile/busy-slots', protect, authorize('provider'), updateBusySlots);
 
 router.get('/profile/me', protect, authorize('provider'), getMyProviderProfile);
 

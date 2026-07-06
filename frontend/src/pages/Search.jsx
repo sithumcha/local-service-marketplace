@@ -153,24 +153,40 @@ const Search = () => {
     providers.forEach(p => {
       if (p.userId?.location?.coordinates) {
         const [lng, lat] = p.userId.location.coordinates;
+        const isFeatured = p.isFeatured;
+        
+        // Custom animated amber or gold marker icon
+        const markerColor = isFeatured ? 'bg-gradient-to-r from-yellow-400 to-amber-500 border-yellow-200 shadow-yellow-500/50 scale-125' : 'bg-amber-500 border-slate-950 shadow-md';
+        const pingColor = isFeatured ? 'bg-yellow-400/50 h-10 w-10' : 'bg-amber-500/35 h-8 w-8';
+        const starIcon = isFeatured ? '<span class="absolute text-[9px] text-slate-950 font-black leading-none top-[1px]">★</span>' : '';
 
-        // Custom animated amber marker icon
         const customIcon = L.divIcon({
           html: `<div class="relative flex items-center justify-center cursor-pointer">
-            <div class="absolute h-8 w-8 rounded-full bg-amber-500/35 animate-ping"></div>
-            <div class="h-4 w-4 rounded-full bg-amber-500 border-2 border-slate-950 shadow-md"></div>
+            <div class="absolute rounded-full ${pingColor} animate-ping"></div>
+            <div class="h-4 w-4 rounded-full ${markerColor} border-2 flex items-center justify-center relative">
+              ${starIcon}
+            </div>
           </div>`,
           className: 'custom-div-icon',
           iconSize: [24, 24],
           iconAnchor: [12, 12]
         });
 
+        const popupName = isFeatured 
+          ? `<strong class="text-sm block font-black text-yellow-400">⭐ ${p.userId.name}</strong>`
+          : `<strong class="text-sm block font-black text-amber-400">${p.userId.name}</strong>`;
+
+        const verificationBadge = p.userId?.isVerified 
+          ? `<span class="mt-1 inline-block text-[9px] font-bold text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20">✔️ Verified ID</span>` 
+          : '';
+
         const marker = L.marker([lat, lng], { icon: customIcon })
           .addTo(mapRef.current)
           .bindPopup(`
             <div class="bg-slate-950 text-white p-3 rounded-xl text-xs font-sans min-w-[160px] border border-slate-800 shadow-2xl">
-              <strong class="text-sm block font-black text-amber-400">${p.userId.name}</strong>
+              ${popupName}
               <span class="text-slate-400 block mt-0.5">${p.serviceCategories?.[0]?.name || 'Service Provider'}</span>
+              ${verificationBadge}
               <strong class="text-white block mt-1.5">LKR ${p.hourlyRate}/hr</strong>
               <a href="/providers/${p.userId?._id}" class="mt-2 block text-center py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg transition text-[10px]">
                 View Profile & Book
@@ -284,10 +300,16 @@ const Search = () => {
                   No service providers found within {radius}km of your location. Try expanding the search radius!
                 </div>
               ) : (
-                providers.map((provider) => (
+                [...providers]
+                  .sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0))
+                  .map((provider) => (
                   <div
                     key={provider._id}
-                    className="bg-slate-900 border border-slate-800/80 p-5 rounded-2xl hover:border-slate-700/80 transition flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between"
+                    className={`bg-slate-900 p-5 rounded-2xl transition flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between border ${
+                      provider.isFeatured
+                        ? 'border-yellow-500/40 shadow-lg shadow-yellow-500/5'
+                        : 'border-slate-800/80 hover:border-slate-700/80'
+                    }`}
                   >
                     <div className="flex gap-4 items-center">
                       <div className="h-14 w-14 rounded-full bg-slate-950 flex items-center justify-center border border-slate-800 text-amber-400 text-xl font-bold uppercase overflow-hidden">
@@ -298,11 +320,16 @@ const Search = () => {
                         )}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-bold text-white text-lg">{provider.userId?.name}</h3>
-                          {provider.isApproved && (
-                            <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-500/20">
-                              ✓ Verified
+                          {provider.userId?.isVerified && (
+                            <span className="bg-sky-500/10 text-sky-400 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-sky-500/20">
+                              ✔️ Verified ID
+                            </span>
+                          )}
+                          {provider.isFeatured && (
+                            <span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-yellow-500/20 animate-pulse">
+                              ⭐ Featured
                             </span>
                           )}
                         </div>

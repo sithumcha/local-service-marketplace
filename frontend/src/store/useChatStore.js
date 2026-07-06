@@ -56,6 +56,12 @@ const useChatStore = create((set, get) => ({
       });
     }
   },
+
+  setAllMessagesSeen: () => {
+    const { messages } = get();
+    const updated = messages.map((m) => ({ ...m, seen: true }));
+    set({ messages: updated });
+  },
 }));
 
 export default useChatStore;

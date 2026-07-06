@@ -165,6 +165,22 @@ const BookingPage = () => {
             </select>
           </div>
 
+          {/* Blocked Slots Warning List */}
+          {provider?.busySlots && provider.busySlots.length > 0 && (
+            <div className="p-4 bg-slate-950/80 border border-slate-850 rounded-2xl space-y-2">
+              <span className="text-[10px] text-rose-400 font-extrabold uppercase block tracking-wider">
+                🚫 Unavailable Time Slots (Busy / Pre-booked)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-400">
+                {provider.busySlots.map((slot, idx) => (
+                  <div key={idx} className="bg-slate-900/60 p-2.5 border border-slate-850 rounded-xl">
+                    {new Date(slot.start).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })} to {new Date(slot.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Service slot */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 

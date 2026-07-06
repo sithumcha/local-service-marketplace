@@ -6,6 +6,7 @@ import ProviderProfileForm from '../../components/provider/ProviderProfileForm';
 import NotificationBell from '../../components/NotificationBell';
 import ThemeToggle from '../../components/ThemeToggle';
 import InvoiceModal from '../../components/InvoiceModal';
+import PaymentModal from '../../components/PaymentModal';
 import api from '../../services/api';
 
 
@@ -18,6 +19,9 @@ const ProviderDashboard = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [reEdit, setReEdit] = useState(false);
   const [selectedInvoiceBooking, setSelectedInvoiceBooking] = useState(null);
+  const [showFeatureCheckout, setShowFeatureCheckout] = useState(false);
+  const [newBusyStart, setNewBusyStart] = useState('');
+  const [newBusyEnd, setNewBusyEnd] = useState('');
 
   const fetchProfile = async () => {
     setLoadingProfile(true);
@@ -56,6 +60,75 @@ const ProviderDashboard = () => {
       await updateStatus(id, 'accepted');
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleKycUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('File size exceeds 2MB limit.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          await api.post('/providers/profile/kyc', { verificationDoc: reader.result });
+          alert('KYC NIC document uploaded successfully! Pending review.');
+          window.location.reload();
+        } catch (err) {
+          alert(err.response?.data?.message || 'KYC Upload failed');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFeaturePurchase = async () => {
+    try {
+      const res = await api.post('/providers/profile/feature');
+      alert('Featured Listing activated successfully for 7 days!');
+      setProfile(res.data.profile);
+      setShowFeatureCheckout(false);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Featured Purchase failed');
+    }
+  };
+
+  const handleAddBusySlot = async (e) => {
+    e.preventDefault();
+    if (!newBusyStart || !newBusyEnd) {
+      alert('Please fill out both start and end date/times.');
+      return;
+    }
+    const start = new Date(newBusyStart);
+    const end = new Date(newBusyEnd);
+    if (start >= end) {
+      alert('End date/time must be after start date/time.');
+      return;
+    }
+
+    const updatedSlots = [...(profile.busySlots || []), { start, end }];
+    try {
+      const res = await api.post('/providers/profile/busy-slots', { busySlots: updatedSlots });
+      setProfile({ ...profile, busySlots: res.data.busySlots });
+      setNewBusyStart('');
+      setNewBusyEnd('');
+      alert('Busy slot added successfully.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update calendar');
+    }
+  };
+
+  const handleRemoveBusySlot = async (index) => {
+    if (window.confirm('Remove this blocked calendar slot?')) {
+      const updatedSlots = (profile.busySlots || []).filter((_, idx) => idx !== index);
+      try {
+        const res = await api.post('/providers/profile/busy-slots', { busySlots: updatedSlots });
+        setProfile({ ...profile, busySlots: res.data.busySlots });
+      } catch (err) {
+        alert(err.response?.data?.message || 'Failed to remove slot');
+      }
     }
   };
 
@@ -408,9 +481,120 @@ const ProviderDashboard = () => {
               </div>
             </div>
 
+            {/* Bio Description */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
               <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-3">Bio Description</h2>
-              <p className="text-slate-350 text-sm leading-relaxed whitespace-pre-wrap">{profile?.bio}</p>
+              <p className="text-slate-355 text-sm leading-relaxed whitespace-pre-wrap">{profile?.bio}</p>
+            </div>
+
+            {/* Verification Status (KYC Upload) */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-550 block">Identity Verification</h2>
+              {user?.isVerified ? (
+                <div className="flex items-center gap-2 p-3 bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-xl text-xs font-bold">
+                  <span>✔️ Verified Profile Active</span>
+                </div>
+              ) : user?.verificationDoc ? (
+                <div className="flex items-center gap-2 p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl text-xs font-bold">
+                  <span>⏳ KYC Review Pending</span>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="p-3 bg-rose-500/10 text-rose-450 border border-rose-500/20 rounded-xl text-xs font-semibold">
+                    ❌ Identity Unverified (NIC Required)
+                  </div>
+                  <label className="w-full py-3 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs font-bold text-slate-300 hover:text-white transition text-center cursor-pointer block">
+                    Upload NIC image
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleKycUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {/* Featured Ads Promotion Box */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-550 block">Featured Listing promotion</h2>
+              {profile?.isFeatured ? (
+                <div className="p-3 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-xl text-xs font-bold">
+                  ⭐ Featured promotion active until:
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {new Date(profile.featuredUntil).toLocaleDateString([], { dateStyle: 'long' })}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-slate-400 text-xs leading-relaxed">
+                    Boost bookings! Get listed first in directories, display gold markers on the map, and get highlighted badge profiles.
+                  </p>
+                  <button
+                    onClick={() => setShowFeatureCheckout(true)}
+                    className="w-full py-3 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition cursor-pointer"
+                  >
+                    Feature Listing LKR 500
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Manually block calendar slots */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-550 block">Blocked Calendar Dates</h2>
+              
+              {/* Add Busy slot form */}
+              <form onSubmit={handleAddBusySlot} className="space-y-3 pt-1">
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Block Start</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={newBusyStart}
+                    onChange={(e) => setNewBusyStart(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Block End</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={newBusyEnd}
+                    onChange={(e) => setNewBusyEnd(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 transition"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white rounded-xl transition cursor-pointer"
+                >
+                  🚫 Block Calendar Slot
+                </button>
+              </form>
+
+              {/* Busy Slots List */}
+              {profile?.busySlots && profile.busySlots.length > 0 && (
+                <div className="space-y-2 border-t border-slate-800 pt-3 max-h-48 overflow-y-auto">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Blocked Windows</span>
+                  {profile.busySlots.map((slot, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-[10px] bg-slate-950 p-2 border border-slate-850 rounded-xl">
+                      <div>
+                        <span className="block text-rose-400 font-bold">Start: {new Date(slot.start).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                        <span className="block text-slate-500">End: {new Date(slot.end).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveBusySlot(idx)}
+                        className="text-rose-500 hover:text-rose-400 p-1 text-[12px] font-bold cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
@@ -431,6 +615,15 @@ const ProviderDashboard = () => {
         <InvoiceModal
           booking={selectedInvoiceBooking}
           onClose={() => setSelectedInvoiceBooking(null)}
+        />
+      )}
+
+      {/* Featured Listing Promotion Checkout Modal */}
+      {showFeatureCheckout && (
+        <PaymentModal
+          booking={{ price: 500 }}
+          onConfirm={handleFeaturePurchase}
+          onClose={() => setShowFeatureCheckout(false)}
         />
       )}
     </div>

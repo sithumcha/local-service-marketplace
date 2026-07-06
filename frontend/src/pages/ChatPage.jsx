@@ -10,10 +10,14 @@ const ChatPage = () => {
   const [searchParams] = useSearchParams();
   const initialBookingId = searchParams.get('bookingId');
 
-  const { chats, messages, currentChat, fetchChats, fetchChatMessages, sendMessage } = useChatStore();
+  const { chats, messages, currentChat, fetchChats, fetchChatMessages, sendMessage, setAllMessagesSeen } = useChatStore();
   const [text, setText] = useState('');
   const [activeBookingId, setActiveBookingId] = useState(initialBookingId || '');
   const [selectedFileBase64, setSelectedFileBase64] = useState('');
+  const [isPeerTyping, setIsPeerTyping] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const typingTimeoutRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -33,10 +37,36 @@ const ChatPage = () => {
     }
   }, [activeBookingId, socket]);
 
-  // 3. Scroll message thread to the bottom when new message arrives
+  // 3. Socket event listeners for read receipts and typing
+  useEffect(() => {
+    if (socket && currentChat) {
+      socket.emit('mark_all_read', { chatId: currentChat._id });
+
+      socket.on('peer_typing', ({ isTyping, userId }) => {
+        const recipient = currentChat.participants.find((p) => p._id !== user?._id);
+        if (userId === recipient?._id) {
+          setIsPeerTyping(isTyping);
+        }
+      });
+
+      socket.on('all_messages_seen', () => {
+        setAllMessagesSeen();
+      });
+
+      return () => {
+        socket.off('peer_typing');
+        socket.off('all_messages_seen');
+      };
+    }
+  }, [socket, currentChat]);
+
+  // 4. Scroll message thread to the bottom when new message arrives
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (socket && currentChat) {
+      socket.emit('mark_all_read', { chatId: currentChat._id });
+    }
+  }, [messages, socket, currentChat]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -46,6 +76,56 @@ const ChatPage = () => {
         setSelectedFileBase64(reader.result);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setText(e.target.value);
+    if (socket && currentChat) {
+      socket.emit('typing', { chatId: currentChat._id, isTyping: true });
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('typing', { chatId: currentChat._id, isTyping: false });
+      }, 1500);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (socket && currentChat) {
+            socket.emit('send_message', {
+              chatId: currentChat._id,
+              text: '🎤 Voice Message',
+              messageType: 'audio',
+              audioContent: reader.result,
+            });
+          }
+        };
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+    } catch (err) {
+      alert('Could not access microphone.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      setIsRecording(false);
     }
   };
 
@@ -140,9 +220,15 @@ const ChatPage = () => {
                   <h3 className="font-bold text-white">
                     {currentChat.participants.find((p) => p._id !== user?._id)?.name}
                   </h3>
-                  <span className="text-slate-500 text-xs">
-                    Service Room: {currentChat.bookingId?.serviceId?.name}
-                  </span>
+                  {isPeerTyping ? (
+                    <span className="text-[10px] text-sky-400 font-black block animate-pulse">
+                      typing...
+                    </span>
+                  ) : (
+                    <span className="text-slate-500 text-xs block">
+                      Service Room: {currentChat.bookingId?.serviceId?.name}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -175,12 +261,24 @@ const ChatPage = () => {
                             ))}
                           </div>
                         )}
-                        {msg.text && <p>{msg.text}</p>}
-                        <span className={`text-[10px] block text-right mt-1.5 ${
-                          isMe ? 'text-slate-900/70' : 'text-slate-550'
-                        }`}>
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                        {msg.messageType === 'audio' ? (
+                          <audio src={msg.audioContent} controls className="max-w-[200px] text-xs rounded-xl mt-1.5 focus:outline-none" />
+                        ) : (
+                          msg.text && <p>{msg.text}</p>
+                        )}
+                        
+                        <div className="flex justify-end items-center gap-1.5 mt-1.5">
+                          <span className={`text-[9px] block ${
+                            isMe ? 'text-slate-900/75' : 'text-slate-500'
+                          }`}>
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {isMe && (
+                            <span className={`text-[10px] font-black ${msg.seen ? 'text-sky-400' : 'text-slate-900/50'}`} title={msg.seen ? 'Read' : 'Sent'}>
+                              ✓✓
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -217,21 +315,38 @@ const ChatPage = () => {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-3 bg-slate-955 border border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-white rounded-2xl transition cursor-pointer"
+                  className="p-3 bg-slate-950 border border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-white rounded-2xl transition cursor-pointer"
                   title="Attach Image"
                 >
                   📎
                 </button>
+                
+                {/* Voice recorder button */}
+                <button
+                  type="button"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  className={`p-3 border rounded-2xl transition cursor-pointer ${
+                    isRecording 
+                      ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse'
+                      : 'bg-slate-950 border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-white'
+                  }`}
+                  title={isRecording ? 'Stop Recording' : 'Record Voice Message'}
+                >
+                  🎙️
+                </button>
+
                 <input
                   type="text"
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="Type your message here..."
-                  className="flex-grow rounded-2xl bg-slate-950 border border-slate-850 px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition text-sm"
+                  onChange={handleInputChange}
+                  placeholder={isRecording ? 'Recording audio note...' : 'Type your message here...'}
+                  disabled={isRecording}
+                  className="flex-grow rounded-2xl bg-slate-950 border border-slate-850 px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition text-sm disabled:opacity-50"
                 />
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-2xl transition cursor-pointer"
+                  disabled={isRecording}
+                  className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-2xl transition cursor-pointer disabled:opacity-50"
                 >
                   Send
                 </button>

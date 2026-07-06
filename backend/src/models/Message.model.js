@@ -25,6 +25,15 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    messageType: {
+      type: String,
+      enum: ['text', 'image', 'audio'],
+      default: 'text',
+    },
+    audioContent: {
+      type: String,
+      default: '',
+    },
   },
   {
     timestamps: true,

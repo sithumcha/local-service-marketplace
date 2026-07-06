@@ -179,4 +179,88 @@ export const sandboxApproveMyProfile = async (req, res) => {
   }
 };
 
+// @desc    Submit KYC document for verification
+// @route   POST /api/providers/profile/kyc
+// @access  Private/Provider
+export const submitKyc = async (req, res) => {
+  try {
+    const { verificationDoc } = req.body;
+    if (!verificationDoc) {
+      return res.status(400).json({ success: false, message: 'Please provide a verification document image' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.verificationDoc = verificationDoc;
+    user.isVerified = false; // Reset verification to pending review
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'KYC identity document uploaded successfully. Verification is pending review.',
+      user,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Purchase featured listing promotion
+// @route   POST /api/providers/profile/feature
+// @access  Private/Provider
+export const buyFeaturedSubscription = async (req, res) => {
+  try {
+    const profile = await ProviderProfile.findOne({ userId: req.user.id });
+    if (!profile) {
+      return res.status(404).json({ success: false, message: 'Provider profile not found' });
+    }
+
+    const oneWeek = 7 * 24 * 60 * 60 * 1000;
+    profile.isFeatured = true;
+    profile.featuredUntil = new Date(Date.now() + oneWeek);
+    await profile.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Featured promotion active for 7 days!',
+      profile,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Update provider manually blocked busy slots
+// @route   POST /api/providers/profile/busy-slots
+// @access  Private/Provider
+export const updateBusySlots = async (req, res) => {
+  try {
+    const { busySlots } = req.body; // Array of { start, end }
+    const profile = await ProviderProfile.findOne({ userId: req.user.id });
+    if (!profile) {
+      return res.status(404).json({ success: false, message: 'Provider profile not found' });
+    }
+
+    // Format inputs as Dates
+    profile.busySlots = (busySlots || []).map((slot) => ({
+      start: new Date(slot.start),
+      end: new Date(slot.end),
+    }));
+
+    await profile.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Calendar busy slots updated successfully',
+      busySlots: profile.busySlots,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
 

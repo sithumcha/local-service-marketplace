@@ -8,7 +8,9 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, approvals, disputes, users, providers
+  const [activeTab, setActiveTab] = useState('overview'); // overview, approvals, disputes, users, providers, kyc
+  const [kycQueue, setKycQueue] = useState([]);
+  const [loadingKyc, setLoadingKyc] = useState(false);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -24,9 +26,29 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchKycQueue = async () => {
+    setLoadingKyc(true);
+    try {
+      const res = await api.get('/admin/kyc-queue');
+      if (res.data && res.data.success) {
+        setKycQueue(res.data.queue || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch KYC queue', err);
+    } finally {
+      setLoadingKyc(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'kyc') {
+      fetchKycQueue();
+    }
+  }, [activeTab]);
 
   const handleApproveProvider = async (profileId) => {
     setActionLoading(true);
@@ -91,6 +113,20 @@ const AdminDashboard = () => {
       fetchStats();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to resolve dispute');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleVerifyKyc = async (userId, action) => {
+    setActionLoading(true);
+    try {
+      await api.post(`/admin/users/${userId}/verify`, { action });
+      alert(`KYC status updated: ${action === 'approve' ? 'Approved' : 'Rejected'}`);
+      fetchKycQueue();
+      fetchStats();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update KYC status');
     } finally {
       setActionLoading(false);
     }
@@ -182,6 +218,12 @@ const AdminDashboard = () => {
           >
             Manage Providers
           </button>
+          <button
+            onClick={() => setActiveTab('kyc')}
+            className={`px-4 py-2.5 font-bold text-xs uppercase tracking-wider transition border-b-2 cursor-pointer whitespace-nowrap ${activeTab === 'kyc' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+          >
+            KYC NIC Queue
+          </button>
         </div>
 
         {/* Tab Contents */}
@@ -209,6 +251,70 @@ const AdminDashboard = () => {
                   <p className="text-emerald-450 font-bold text-sm">✓ All services running normally</p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB: KYC NIC QUEUE */}
+          {activeTab === 'kyc' && (
+            <div className="bg-slate-900 border border-slate-855 p-6 rounded-3xl space-y-4">
+              <div>
+                <h2 className="text-lg font-black text-white">KYC Identity Documents Review Queue</h2>
+                <p className="text-slate-500 text-xs mt-0.5">Review uploaded National Identity Card (NIC) documents to verify provider profiles.</p>
+              </div>
+
+              {loadingKyc ? (
+                <div className="flex justify-center py-10">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent"></div>
+                </div>
+              ) : kycQueue.length === 0 ? (
+                <div className="text-center py-12 text-slate-550 border border-dashed border-slate-800 rounded-2xl">
+                  No users pending KYC identity verification.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {kycQueue.map((item) => (
+                    <div key={item._id} className="bg-slate-950 p-5 border border-slate-850 rounded-2xl flex flex-col justify-between gap-4">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-bold text-white text-base leading-tight">{item.name}</h4>
+                            <p className="text-xs text-slate-500 mt-1">📧 {item.email} • 📞 {item.phone}</p>
+                          </div>
+                          <span className="bg-amber-500/10 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/20">
+                            Pending Check
+                          </span>
+                        </div>
+
+                        {/* NIC Image Viewer */}
+                        <div className="relative rounded-xl border border-slate-800 overflow-hidden bg-slate-900 flex items-center justify-center min-h-[160px] max-h-[300px]">
+                          {item.verificationDoc ? (
+                            <img src={item.verificationDoc} alt="NIC Document" className="max-w-full max-h-[280px] object-contain rounded-lg p-2" />
+                          ) : (
+                            <span className="text-slate-600 text-xs font-mono">No document uploaded</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 border-t border-slate-900 pt-4 justify-end">
+                        <button
+                          disabled={actionLoading}
+                          onClick={() => handleVerifyKyc(item._id, 'reject')}
+                          className="px-4 py-2 border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-450 font-bold rounded-xl text-xs transition cursor-pointer"
+                        >
+                          Decline & Clear NIC
+                        </button>
+                        <button
+                          disabled={actionLoading}
+                          onClick={() => handleVerifyKyc(item._id, 'approve')}
+                          className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-slate-950 hover:scale-[1.02] font-black rounded-xl text-xs shadow transition cursor-pointer"
+                        >
+                          Approve Identity 🛡️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
