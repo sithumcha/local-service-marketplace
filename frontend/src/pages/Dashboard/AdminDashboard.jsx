@@ -251,6 +251,91 @@ const AdminDashboard = () => {
                   <p className="text-emerald-450 font-bold text-sm">✓ All services running normally</p>
                 </div>
               </div>
+
+              {/* SVG Area Chart */}
+              <div className="mt-8 pt-6 border-t border-slate-950 space-y-4">
+                <div>
+                  <h3 className="text-base font-bold text-white">Platform Revenue Growth (LKR)</h3>
+                  <p className="text-slate-500 text-[11px]">Monthly escrow checkouts volume over the last 6 months</p>
+                </div>
+                
+                {stats?.chartData && stats.chartData.length > 0 ? (
+                  <div className="w-full bg-slate-950/40 border border-slate-850 p-4 rounded-2xl">
+                    <svg viewBox="0 0 500 200" className="w-full h-48 overflow-visible">
+                      {/* Grid Lines */}
+                      <line x1="40" y1="20" x2="480" y2="20" stroke="#1e293b" strokeDasharray="3,3" />
+                      <line x1="40" y1="60" x2="480" y2="60" stroke="#1e293b" strokeDasharray="3,3" />
+                      <line x1="40" y1="100" x2="480" y2="100" stroke="#1e293b" strokeDasharray="3,3" />
+                      <line x1="40" y1="140" x2="480" y2="140" stroke="#1e293b" strokeDasharray="3,3" />
+                      <line x1="40" y1="170" x2="480" y2="170" stroke="#1e293b" />
+
+                      {(() => {
+                        const revenues = stats.chartData.map((d) => d.revenue);
+                        const maxVal = Math.max(...revenues, 1000);
+                        
+                        const points = stats.chartData.map((d, index) => {
+                          const x = 40 + (index * 440) / 5;
+                          const y = 170 - (d.revenue / maxVal) * 140;
+                          return { x, y, label: d.label, val: d.revenue };
+                        });
+
+                        const pathStr = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                        const areaStr = `${pathStr} L ${points[points.length - 1].x} 170 L ${points[0].x} 170 Z`;
+
+                        return (
+                          <>
+                            {/* Area Gradient Fill */}
+                            <defs>
+                              <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.2" />
+                                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.0" />
+                              </linearGradient>
+                            </defs>
+                            <path d={areaStr} fill="url(#chartGradient)" />
+
+                            {/* Line Path */}
+                            <path d={pathStr} fill="none" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round" />
+
+                            {/* Coordinates circles and text values */}
+                            {points.map((p, idx) => (
+                              <g key={idx}>
+                                <circle
+                                  cx={p.x}
+                                  cy={p.y}
+                                  r="5"
+                                  fill="#f59e0b"
+                                  stroke="#0f172a"
+                                  strokeWidth="2"
+                                />
+                                <text
+                                  x={p.x}
+                                  y={p.y - 12}
+                                  textAnchor="middle"
+                                  fill="#ffffff"
+                                  className="text-[9px] font-black fill-white"
+                                >
+                                  {p.val >= 1000 ? `${(p.val / 1000).toFixed(0)}k` : p.val}
+                                </text>
+                                <text
+                                  x={p.x}
+                                  y="188"
+                                  textAnchor="middle"
+                                  fill="#64748b"
+                                  className="text-[9px] font-bold fill-slate-500"
+                                >
+                                  {p.label}
+                                </text>
+                              </g>
+                            ))}
+                          </>
+                        );
+                      })()}
+                    </svg>
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-xs text-slate-500">Loading charts analytics data...</div>
+                )}
+              </div>
             </div>
           )}
 

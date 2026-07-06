@@ -21,6 +21,9 @@ const BookingPage = () => {
   const [masterCategories, setMasterCategories] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [coords, setCoords] = useState([79.8612, 6.9271]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   const { createBooking } = useBookingStore();
   const navigate = useNavigate();
@@ -54,6 +57,34 @@ const BookingPage = () => {
   }, [providerId]);
 
 
+  const handleAddressChange = async (val) => {
+    setAddress(val);
+    if (val.trim().length > 3) {
+      setLoadingSuggestions(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            val
+          )}&countrycodes=lk&limit=5`
+        );
+        const data = await res.json();
+        setSuggestions(data || []);
+      } catch (err) {
+        console.error('Suggestions fetch error:', err);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    } else {
+      setSuggestions([]);
+    }
+  };
+
+  const handleSelectSuggestion = (item) => {
+    setAddress(item.display_name);
+    setCoords([parseFloat(item.lon), parseFloat(item.lat)]);
+    setSuggestions([]);
+  };
+
   const executeBookingSubmission = async (isPaid = false) => {
     setSubmitting(true);
     setErrorMsg('');
@@ -75,7 +106,7 @@ const BookingPage = () => {
         price: totalPrice,
         paymentMethod,
         isPaid,
-        coordinates: [79.8612, 6.9271], // Default Colombo coordinates
+        coordinates: coords,
       });
 
       // Redirect to customer dashboard
@@ -245,7 +276,7 @@ const BookingPage = () => {
           </div>
 
           {/* Address */}
-          <div>
+          <div className="relative">
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
               Full Service Address (Sri Lanka)
             </label>
@@ -253,10 +284,30 @@ const BookingPage = () => {
               type="text"
               required
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(e) => handleAddressChange(e.target.value)}
               placeholder="E.g. 123 Galle Road, Colombo 03"
               className="w-full rounded-xl bg-slate-950 border border-slate-800 px-4 py-3 text-white placeholder-slate-650 focus:outline-none focus:border-amber-500 transition text-sm"
             />
+            {loadingSuggestions && (
+              <span className="absolute right-4 bottom-3 text-xs text-slate-500 animate-pulse">Searching...</span>
+            )}
+            
+            {/* Suggestions list */}
+            {suggestions.length > 0 && (
+              <ul className="absolute z-50 left-0 right-0 mt-1 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl max-h-48 overflow-y-auto divide-y divide-slate-850">
+                {suggestions.map((item, idx) => (
+                  <li key={idx}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectSuggestion(item)}
+                      className="w-full px-4 py-2.5 text-left text-xs text-slate-300 hover:bg-slate-800 transition hover:text-white cursor-pointer block"
+                    >
+                      {item.display_name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Estimated duration */}
