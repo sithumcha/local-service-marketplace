@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+body {
+  @apply bg-slate-950 text-slate-100 antialiased;
+}
+
+/* Light Theme overrides using Tailwind v4 custom theme variables */
+html.light {
+  /* Background Overrides */
+  --color-slate-950: #f8fafc !important; /* Base background */
+  --color-slate-900: #ffffff !important; /* Panel background */
+  --color-slate-850: #f1f5f9 !important; /* Card background */
+  --color-slate-800: #e2e8f0 !important; /* Borders and dividers */
+  --color-slate-750: #cbd5e1 !important;
+  --color-slate-700: #94a3b8 !important;
+
+  /* Text Overrides (Muted) */
+  --color-slate-650: #64748b !important;
+  --color-slate-600: #64748b !important;
+  --color-slate-550: #475569 !important;
+  --color-slate-500: #475569 !important;
+  --color-slate-450: #334155 !important;
+  
+  /* Text Overrides (Active/Main text) */
+  --color-slate-400: #0f172a !important;
+  --color-slate-350: #0f172a !important;
+  --color-slate-300: #0f172a !important;
+  --color-slate-200: #020617 !important;
+  --color-slate-100: #020617 !important;
+}
+
+/* Force light mode text updates on hardcoded text-white utility classes */
+html.light .text-white {
+  color: #0f172a !important;
+}
+
+/* Prevent amber button text from becoming black if it was already dark */
+html.light .bg-gradient-to-r .text-slate-950,
+html.light .bg-amber-500 .text-slate-950,
+html.light .text-slate-950 {
+  color: #020617 !important;
+}
+
+/* Smooth transition for theme switching */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+/* Custom Leaflet Dark Popups styling */
+.custom-leaflet-popup .leaflet-popup-content-wrapper {
+  background: #090d16 !important; /* bg-slate-950 */
+  border: 1px solid #1e293b !important; /* border-slate-800 */
+  border-radius: 16px !important;
+  color: #f8fafc !important;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5) !important;
+  padding: 0 !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-content {
+  margin: 0 !important;
+  line-height: inherit !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-tip {
+  background: #090d16 !important;
+}
+
